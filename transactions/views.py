@@ -9,14 +9,15 @@ from django.http import HttpResponse
 from datetime import datetime
 from django.db.models import Sum
 from django.views import View
+from django.urls import reverse_lazy
 
 
 # Create your views here.
 class TransactionCreateMixin(LoginRequiredMixin,CreateView):
-    template_name = ''
+    template_name = 'transactions/transaction_form.html'
     title = ''
     model = Transaction
-    success_url = ''
+    success_url = reverse_lazy('transaction_report')
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
@@ -30,6 +31,7 @@ class TransactionCreateMixin(LoginRequiredMixin,CreateView):
         context.update({
             'title':self.title
         })
+        return context
 
 
 class DepositMoneyView(TransactionCreateMixin):
@@ -89,9 +91,10 @@ class LoanRequestView(TransactionCreateMixin):
     
 
 class TransactionReportView(LoginRequiredMixin,ListView):
-    template_name = ''
+    template_name = 'transactions/transactions_report.html'
     model = Transaction
     balance = 0
+    context_object_name = 'report_list'
 
     def get_queryset(self):
         queryset = super().get_queryset().filter(
@@ -103,7 +106,7 @@ class TransactionReportView(LoginRequiredMixin,ListView):
         if(start_date_str and end_date_str):
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-            queryset = queryset.filter(timestamp_date__gte = start_date, timestamp_date__lte = end_date)
+            queryset = queryset.filter(timestamp__date__gte = start_date, timestamp__date__lte = end_date)
             self.balance = Transaction.objects.filter(
             timestamp__date__gte=start_date, timestamp__date__lte=end_date
             ).aggregate(Sum('amount'))['amount__sum']
@@ -147,7 +150,7 @@ class PayLoanView(LoginRequiredMixin, View):
 class LoanListView(LoginRequiredMixin,ListView):
     model = Transaction
     # template_name = 'transactions/loan_request.html'
-    template_name = ''
+    template_name = 'transactions/loan_request.html'
     context_object_name = 'loans' # loan list ta ei loans context er moddhe thakbe
     
     def get_queryset(self):
