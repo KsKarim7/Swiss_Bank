@@ -9,5 +9,5 @@ urlpatterns = [
     path("withdraw/", WithdrawMoneyView.as_view(), name="withdraw_money"),
     path("loan_request/", LoanRequestView.as_view(), name="loan_request"),
     path("loans/", LoanListView.as_view(), name="loan_list"),
-    path("loans/<int:loan_id>/", PayLoanView.as_view(), name="loan_pay"),
+    path("loans/<int:loan_id>/", PayLoanView.as_view(), name="pay"),
 ]

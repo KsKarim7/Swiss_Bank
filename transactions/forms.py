@@ -5,16 +5,16 @@ from .models import Transaction
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
-        fields = ['amount', 'transaction_type',]
+        fields = ['amount', 'transaction_type']
     def __init__(self, *args, **kwargs):
         self.account = kwargs.pop('account')
-        super.__init__(self, *args, **kwargs)
+        super.__init__(*args, **kwargs)
         self.fields['transaction_type'].disabled = True
         self.fields['transaction_type'].widget = forms.HiddenInput()
     
-    def save(self,commit = True):
+    def save(self, commit=True):
         self.instance.account = self.account
-        self.instance.balance_after_transaction = self.account.balance 
+        self.instance.balance_after_transaction = self.account.balance
         return super().save()
     
 class DepositForm(TransactionForm):
@@ -27,6 +27,7 @@ class DepositForm(TransactionForm):
             )
 
         return amount
+
 
 
 class WithdrawForm(TransactionForm):
@@ -47,7 +48,7 @@ class WithdrawForm(TransactionForm):
                 f'You can withdraw at most {max_withdraw_amount} $'
             )
 
-        if amount > balance: # amount = 5000, tar balance ache 200
+        if amount > balance:
             raise forms.ValidationError(
                 f'You have {balance} $ in your account. '
                 'You can not withdraw more than your account balance'
