@@ -1,20 +1,20 @@
-from django.shortcuts import get_object_or_404, redirect
-from django.views.generic import CreateView, DeleteView,ListView
+from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from .models import Transaction
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.shortcuts import get_object_or_404, redirect
+from django.views import View
+from django.http import HttpResponse
+from django.views.generic import CreateView, ListView
+from transactions.constants import DEPOSIT, WITHDRAWAL,LOAN, LOAN_PAID
+from datetime import datetime
+from django.db.models import Sum
 from transactions.forms import (
     DepositForm,
     WithdrawForm,
     LoanRequestForm,
 )
 from transactions.models import Transaction
-from .constants import DEPOSIT,WITHDRAWAL,LOAN,LOAN_PAID
-from django.contrib import messages
-from django.http import HttpResponse
-from datetime import datetime
-from django.db.models import Sum
-from django.views import View
-from django.urls import reverse_lazy
 
 
 # Create your views here.
@@ -93,9 +93,9 @@ class LoanRequestView(TransactionCreateMixin):
 
     def form_valid(self, form):
         amount = form.cleaned_data.get('amount')
-        current_loan_count = Transaction.objects.filter(account = self.request.user.account, transaction_type = LOAN, loan_approved = True).count()
-
-        if(current_loan_count >= 3):
+        current_loan_count = Transaction.objects.filter(
+            account=self.request.user.account,transaction_type=3,loan_approve=True).count()
+        if current_loan_count >= 3:
             return HttpResponse('You have crossed your loan limits')
          
         messages.success(self.request,f"Congratulations, your loan request for ${amount} has been approved!")
