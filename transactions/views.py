@@ -2,21 +2,24 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.http import HttpResponse
 from django.views.generic import CreateView, ListView
-from transactions.constants import DEPOSIT, WITHDRAWAL,LOAN, LOAN_PAID
+from transactions.constants import DEPOSIT, WITHDRAWAL,LOAN, LOAN_PAID, RECEIVE_MONEY, TRANSFER_MONEY
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.template.loader import render_to_string
 from datetime import datetime
 from django.db.models import Sum
+from accounts.models import UserBankAccount
 from transactions.forms import (
     DepositForm,
     WithdrawForm,
     LoanRequestForm,
+    TransferForm,
 )
 from transactions.models import Transaction
+from decimal import Decimal
 
 def send_transaction_email(user, amount, subject, template):
         message = render_to_string(template, {
@@ -152,7 +155,7 @@ class TransactionReportView(LoginRequiredMixin,ListView):
 class PayLoanView(LoginRequiredMixin, View):
     def get(self, request, loan_id):
         loan = get_object_or_404(Transaction, id=loan_id)
-        print(loan)
+        # print(loan)
         if loan.loan_approve:
             user_account = loan.account
                 # Reduce the loan amount from the user's balance
@@ -184,3 +187,66 @@ class LoanListView(LoginRequiredMixin,ListView):
         queryset = Transaction.objects.filter(account=user_account,transaction_type=3)
         print(queryset)
         return queryset
+    
+
+class LoanListView(LoginRequiredMixin,ListView):
+    model = Transaction
+    template_name = 'transactions/loan_request.html'
+    context_object_name = 'loans' 
+    
+    def get_queryset(self):
+        user_account = self.request.user.account
+        queryset = Transaction.objects.filter(account=user_account,transaction_type=3)
+        print(queryset)
+        return queryset
+    
+
+def transfer_money(request):
+    title = 'Send Money'
+    if request.method == 'POST':
+        form = TransferForm(request.POST)
+        if form.is_valid():
+            sender_account = request.user.account
+            print(sender_account.balance)
+            receiver = form.cleaned_data['receiver_account']
+            if UserBankAccount.objects.get(account_no = receiver):
+                receiver_account = UserBankAccount.objects.get(account_no = receiver)
+                print(receiver_account.balance)
+                amount = form.cleaned_data['amount']
+                print(amount)
+
+                if sender_account.balance >= amount:
+                    sender_account.balance -= amount
+                    sender_account.save()
+                    send_transaction_email(sender_account.user, amount, "Transfer money Mail", "sender_mail.html")
+                    
+                    
+                    receiver_account.balance += amount
+                    receiver_account.save()
+                    send_transaction_email(receiver_account.user, amount, "Receive money Mail", "receiver_mail.html")
+                    
+                    transaction = Transaction(
+                        account=sender_account,
+                        amount=amount,
+                        balance_after_transaction=sender_account.balance,
+                        transaction_type=TRANSFER_MONEY,  
+                        loan_approve=False,  
+                    )
+                    transaction.save()
+                    transaction = Transaction(
+                        account=receiver_account,
+                        amount=amount,
+                        balance_after_transaction=receiver_account.balance,
+                        transaction_type=RECEIVE_MONEY,  
+                        loan_approve=False, 
+                    )
+                    transaction.save()
+                    return redirect('home') 
+            else:
+                print('User not found')
+            
+
+    else:
+        form = TransferForm()
+
+    return render(request, 'transactions/transfer_money.html', {'form': form})
