@@ -38,6 +38,7 @@ class WithdrawForm(TransactionForm):
         max_withdraw_amount = 20000
         balance = account.balance # 1000
         amount = self.cleaned_data.get('amount')
+        
         if amount < min_withdraw_amount:
             raise forms.ValidationError(
                 f'You can withdraw at least {min_withdraw_amount} $'
@@ -53,6 +54,10 @@ class WithdrawForm(TransactionForm):
                 f'You have {balance} $ in your account. '
                 'You can not withdraw more than your account balance'
             )
+        if account.is_bankrupt:
+            raise forms.ValidationError(
+                f'You can not withdraw, the bank is bankrupt.'
+            ) 
 
         return amount
 
